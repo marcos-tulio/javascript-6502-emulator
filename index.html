@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Page Title</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <!-- <link rel='stylesheet' type='text/css' media='screen' href='main.css'> -->
+
+    <!-- Scripts -->
+    <script src='js/_helper.js'></script>
+    
+    <script src='js/cpu/_address.js'></script>
+    <script src='js/cpu/_instruction.js'></script>
+    <script src='js/cpu/_opcode.js'></script>
+    <script src='js/cpu/cpu.js'></script>
+
+    <script src='js/bus.js'></script>
+    
+    <script src='js/emulator.js'></script>
+
+</head>
+<body>
+    
+    <canvas id="cpu" width="600" height="100" style="border:1px solid #000000;"></canvas>
+    <canvas id="ram" width="600" height="600" style="border:1px solid #000000;"></canvas>
+
+    <script>
+        // Table config.
+        const size_x = 25
+        const size_y = 20
+        const title_size = 40
+        const addr_init = 0x0000
+        const cols = 16
+        const rows = 25
+
+        // Canvas config.
+        const lstCanvas = document.getElementsByTagName("canvas");
+        for (i = 0; i < lstCanvas.length; i++)
+            lstCanvas[i].getContext("2d").font = "13px Monospaced"
+        
+
+        function getCanvasClearned(id){
+            const canvas = document.getElementById(id)
+            const context = canvas.getContext("2d")
+
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            return canvas
+        }
+
+        function toHex(value, digits = 2){
+            var str = value.toString(16).toUpperCase()
+
+            while (str.length < digits)
+                str = "0" + str
+
+            return str
+        }
+
+        function updateRam(){
+            const ctx = getCanvasClearned("ram").getContext("2d")
+
+            var row = col = 0            
+            for (var i = addr_init; i < BUS.ram.length; i++){
+                if (i % cols == 0){
+                    col = 0
+                    row++
+
+                    if (row > rows) break;
+                }
+
+                if (col == 0)
+                    ctx.fillText("$" + toHex(i, 4), col++ * size_x, row * size_y)
+                
+                ctx.fillText(toHex(BUS.ram[i]), col++ * size_x + title_size, row * size_y)  
+            }  
+        }
+
+        function updateCpu(){
+            const ctx = getCanvasClearned("cpu").getContext("2d")
+            ctx.fillStyle = "black"
+            ctx.fillText("Status: ", 0, size_y)
+
+            var flags = Object.entries(CPU.FLAG)
+            for (let i = 0; i < flags.length; i++) {
+                ctx.fillStyle = (flags[i][1] & CPU.status) > 0 ? "green" : "red"
+                ctx.fillText(flags[i][0], (2 + i) * size_x , size_y)
+            }
+
+        }
+
+        setInterval(function(){
+            updateCpu()
+            updateRam()
+        }, 500);
+    
+    </script>
+</body>
+</html>
