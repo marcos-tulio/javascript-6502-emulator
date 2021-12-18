@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Page Title</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <!-- <link rel='stylesheet' type='text/css' media='screen' href='main.css'> -->
+
+    <!-- Scripts -->
+    <script src='js/_helper.js'></script>
+    
+    <script src='js/cpu/_address.js'></script>
+    <script src='js/cpu/_instruction.js'></script>
+    <script src='js/cpu/_opcode.js'></script>
+    <script src='js/cpu/cpu.js'></script>
+
+    <script src='js/bus.js'></script>
+    
+    <script src='js/emulator.js'></script>
+
+    <style>
+        body{    
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header{
+            margin: auto;
+            text-align: center;
+        }
+
+        .container{
+            display: flex;
+            margin: auto;
+        }
+
+        .col{ 
+            display: flex; 
+            flex-direction: column;
+        }
+
+        canvas, .buttons{
+            border:1px solid #000000;
+            margin: .1rem;
+
+        }
+
+        canvas{
+            display: block;
+        }
+
+        .buttons{
+            display: flex;
+            flex-direction: column;
+            width: 205px; 
+            height: 70px;
+        }
+
+        button, label{
+            margin: 0 .2rem;
+        }
+
+        .form{
+            display: flex;
+            flex-direction: row;
+            margin: auto;
+        }
+
+        .form input{ width: 50px;}
+
+    </style>
+</head>
+
+<body>  
+ 
+    <div class="header">
+        <h1>6502 Emulator</h1>
+        <p>6502 Emulator based on OLCNES Emulator.</p>
+        <p>Developed by Marcos Santos</p>
+    </div>
+
+    <div class="container">
+        <div class="col">
+            <canvas id="ram_1" width="470" height="330"></canvas>
+            <canvas id="ram_2" width="470" height="330"></canvas>
+        </div>
+
+        <div class="col">
+            <div><canvas id="cpu" width="205" height="135"></canvas></div>
+            <div><canvas id="debugger" width="205" height="450"></canvas></div>
+            
+            <div class="buttons">
+                <div class="form">
+                    <label for="interval">Interval (ms):</label>
+                    <input id="interval" type="number" value="100"/>
+                    <button onclick="runAuto(this)">Run</button>
+                </div>
+
+                <div class="form">
+                    <button onclick="runManual()">Manual Step</button>
+                    <button onclick="init()">Reset</button>
+                </div>
+            </div>
+        </div>      
+    </div>
+
+
+    <script>
+        // Source
+        const offset_source = 0x8000
+        const source = [
+            0xA2, 0x0A, 0x8E, 0x00, 0x00, 0xA2, 0x03, 0x8E, 0x01, 0x00, 
+            0xAC, 0x00, 0x00, 0xA9, 0x00, 0x18, 0x6D, 0x01, 0x00, 0x88, 
+            0xD0, 0xFA, 0x8D, 0x02, 0x00, 0xEA, 0xEA, 0xEA
+        ]
+
+        // Table config.
+        const size_x = 25
+        const size_y = 20
+        const title_size = 40
+        const cols = 16
+        const rows = 16
+        const padding = 10
+
+        function init(){
+            //------------------
+            //      NES
+            //-----------------
+            // clear ram
+            for (const i in BUS.ram)
+                BUS.ram[i] = 0x00
+
+            // load code to ram            
+            offset = offset_source
+            for (const b of source) 
+                BUS.ram[offset++] = b
+
+
+            // reset vectors
+            BUS.ram[0xFFFC] = 0x00;
+		    BUS.ram[0xFFFD] = 0x80;
+
+            // reset
+            CPU.reset()
+
+
+            //------------------
+            //      Debugger
+            //-----------------
+            // init asm mapper 
+            map_asm = CPU.disassemble(0x0000, 0xFFFF)            
+
+
+            //------------------
+            //      View
+            //-----------------
+            // Canvas config.
+            const lstCanvas = document.getElementsByTagName("canvas");
+            for (i = 0; i < lstCanvas.length; i++)
+                lstCanvas[i].getContext("2d").font = "12px monospace"
+
+            auto_runner = undefined
+
+
+            updateScreen()
+
+            // Set refresh timer
+            /*setInterval(function(){
+                updateCpu()
+                updateRam("ram_1", 0x0000)
+                updateRam("ram_2", 0x8000)
+                updateDisassemble(26)
+            }, 500);*/
+        }
+
+        function getCanvasClearned(id){
+            const canvas = document.getElementById(id)
+            const context = canvas.getContext("2d")
+
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            return canvas
+        }
+
+        function updateRam(id, address){
+            const ctx = getCanvasClearned(id).getContext("2d")
+
+            var row = col = 0            
+            for (var i = address; i < BUS.ram.length; i++){
+                if (i % cols == 0){
+                    col = 0
+                    row++
+
+                    if (row > rows) break;
+                }
+
+                if (col == 0)
+                    ctx.fillText("$" + toHex(i, 4), col++ * size_x + padding, row * size_y)
+                
+                ctx.fillText(toHex(BUS.ram[i]), col++ * size_x + title_size, row * size_y)  
+            }  
+        }
+
+        function updateCpu(){
+            const ctx = getCanvasClearned("cpu").getContext("2d")
+            
+            var flags = Object.entries(CPU.FLAG)
+            for (let i = 0; i < flags.length; i++) {
+                ctx.fillStyle = (flags[i][1] & CPU.status) > 0 ? "green" : "red"
+                ctx.fillText(flags[i][0], (i) * size_x + padding, size_y)
+            }
+
+
+            // Registers
+            ctx.fillStyle = "black"
+            ctx.fillText("PC: $" + toHex(CPU.pcount, 4), padding, size_y * 2)
+            ctx.fillText("SP: $" + toHex(CPU.stack, 2), padding, size_y * 3)
+            ctx.fillText(" A: $" + toHex(CPU.acc, 2)   + " ("+ CPU.acc   + ")", padding, size_y * 4)
+            ctx.fillText(" X: $" + toHex(CPU.reg_x, 2) + " ("+ CPU.reg_x + ")", padding, size_y * 5)
+            ctx.fillText(" Y: $" + toHex(CPU.reg_y, 2) + " ("+ CPU.reg_y + ")", padding, size_y * 6)
+        }
+
+        function updateDisassemble(lines = 10){
+            const ctx = getCanvasClearned("debugger").getContext("2d")
+
+            const offsets = []
+            let offset_selected = undefined
+            let down_lines = parseInt(lines / 2);
+
+            // down check
+            for (let i = CPU.pcount; i >= 0; i--) {
+                if (map_asm[i]){
+                    offsets.push(i)
+                    if (!offset_selected) offset_selected = i
+                    if (!down_lines--) break
+                }
+            }
+
+            // up check
+            for (let i = CPU.pcount + 1; i < BUS.ram.length; i++) {
+                if (map_asm[i]){
+                    offsets.push(i)
+                    if (offsets.length == lines) break
+                }
+            }
+
+            // draw codes
+            let line = 1
+            for (const _offset of offsets.sort( function(a,b) { return a - b; } )) {
+                ctx.fillStyle = (_offset == offset_selected) ? "green" : "black"
+                ctx.fillText(map_asm[_offset], padding, line++ * size_y)
+            }
+        }
+
+        function updateScreen(){
+            updateCpu()
+            updateRam("ram_1", 0x0000)
+            updateRam("ram_2", 0x8000)
+            updateDisassemble(22)
+        }
+
+        function runAuto(btn, is_call_back = false){
+            if (!is_call_back){
+                btn.textContent = (btn.textContent == "Run") ? "Stop" : "Run"
+            }
+            
+            if (btn.textContent == "Stop"){
+                runManual()
+                setTimeout(runAuto, document.getElementById("interval").value, btn, true)
+            }
+        }
+
+        function runManual(){
+            do CPU.clock()
+            while (!CPU.complete())
+
+            updateScreen()
+        }
+
+        init()
+    </script>
+</body>
+
+</html>
