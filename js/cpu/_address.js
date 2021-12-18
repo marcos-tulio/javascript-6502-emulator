@@ -11,6 +11,7 @@ class Address{
         this.cpu = cpu
     }
 
+    // Address Mode: Absolute 
     abs(){
         printLogInstruction("Address mode ABS executed!")
 
@@ -25,6 +26,7 @@ class Address{
         return 0
     }
 
+    // Address Mode: Absolute with X Offset
     abx(){
         printLogInstruction("Address mode ABX executed!")
 
@@ -39,10 +41,11 @@ class Address{
 
         if ( (this.cpu.addr_abs & 0xFF00) != (high << 8))
             return 1
-        else
-            return 0
+        
+        return 0
     }
 
+    // Address Mode: Absolute with Y Offset
     aby(){
         printLogInstruction("Address mode ABY executed!")
 
@@ -57,10 +60,11 @@ class Address{
 
         if ( (this.cpu.addr_abs & 0xFF00) != (high << 8))
             return 1
-        else
-            return 0
+        
+        return 0
     }
 
+    // Address Mode: Indirect
     ind(){
         printLogInstruction("Address mode IND executed!")
 
@@ -83,6 +87,7 @@ class Address{
         return 0
     }
 
+    // Address Mode: Immediate
     imm(){
         printLogInstruction("Address mode IMM executed!")
 
@@ -92,6 +97,7 @@ class Address{
         return 0
     }
 
+    // Address Mode: Implied
     imp(){
         printLogInstruction("Address mode IMP executed!")
 
@@ -101,6 +107,7 @@ class Address{
         return 0
     }
 
+    // Address Mode: Indirect X
     izx(){
         printLogInstruction("Address mode IZX executed!")
  
@@ -115,6 +122,7 @@ class Address{
         return 0
     }
 
+    // Address Mode: Indirect Y
     izy(){
         printLogInstruction("Address mode IZY executed!")
 
@@ -133,6 +141,7 @@ class Address{
         return 0
     }
 
+    // Address Mode: Relative
     rel(){
         printLogInstruction("Address mode REL executed!")
 
@@ -145,6 +154,7 @@ class Address{
         return 0
     }
 
+    // Address Mode: Zero Page
     zp0(){
         printLogInstruction("Address mode ZP0 executed!")
 
@@ -157,6 +167,7 @@ class Address{
         return 0
     }
 
+    // Address Mode: Zero Page with X Offset
     zpx(){
         printLogInstruction("Address mode ZPX executed!")
 
@@ -169,6 +180,7 @@ class Address{
         return 0
     }
 
+    // Address Mode: Zero Page with Y Offset
     zpy(){
         printLogInstruction("Address mode ZPY executed!")
 

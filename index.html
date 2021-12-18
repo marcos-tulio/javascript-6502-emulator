@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en-us">
 <head>
     <meta charset='utf-8'>
     <meta http-equiv='X-UA-Compatible' content='IE=edge'>
@@ -23,26 +23,64 @@
         body{    
             margin: 0;
             padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header{
+            margin: auto;
+            text-align: center;
         }
 
         .container{
             display: flex;
+            margin: auto;
         }
 
-        .col{ display: flex; flex-direction: column;}
+        .col{ 
+            display: flex; 
+            flex-direction: column;
+        }
 
-        div{
+        canvas, .buttons{
+            border:1px solid #000000;
+            margin: .1rem;
+
         }
 
         canvas{
-            margin: 0;
-            border:1px solid #000000;
             display: block;
-            margin: .1rem;
         }
+
+        .buttons{
+            display: flex;
+            flex-direction: column;
+            width: 205px; 
+            height: 70px;
+        }
+
+        button, label{
+            margin: 0 .2rem;
+        }
+
+        .form{
+            display: flex;
+            flex-direction: row;
+            margin: auto;
+        }
+
+        .form input{ width: 50px;}
+
     </style>
 </head>
-<body>   
+
+<body>  
+ 
+    <div class="header">
+        <h1>6502 Emulator</h1>
+        <p>6502 Emulator based on OLCNES Emulator.</p>
+        <p>Developed by Marcos Santos</p>
+    </div>
 
     <div class="container">
         <div class="col">
@@ -51,18 +89,24 @@
         </div>
 
         <div class="col">
-            <div><canvas id="cpu" width="280" height="135"></canvas></div>
-            <div><canvas id="debugger" width="280" height="525"></canvas></div>
+            <div><canvas id="cpu" width="205" height="135"></canvas></div>
+            <div><canvas id="debugger" width="205" height="450"></canvas></div>
+            
+            <div class="buttons">
+                <div class="form">
+                    <label for="interval">Interval (ms):</label>
+                    <input id="interval" type="number" value="100"/>
+                    <button onclick="runAuto(this)">Run</button>
+                </div>
+
+                <div class="form">
+                    <button onclick="runManual()">Manual Step</button>
+                    <button onclick="init()">Reset</button>
+                </div>
+            </div>
         </div>      
-
-        <div class="col">
-            <button onclick="runManual()">Clock Manual</button>
-            <button id="btn-start-interval" onclick="runAuto()">Rodar Automático</button>
-        </div>
     </div>
 
-    <div>
-    </div>
 
     <script>
         // Source
@@ -85,6 +129,10 @@
             //------------------
             //      NES
             //-----------------
+            // clear ram
+            for (const i in BUS.ram)
+                BUS.ram[i] = 0x00
+
             // load code to ram            
             offset = offset_source
             for (const b of source) 
@@ -159,14 +207,10 @@
         function updateCpu(){
             const ctx = getCanvasClearned("cpu").getContext("2d")
             
-            // Flags
-            ctx.fillStyle = "black"
-            ctx.fillText("Status: ", padding, size_y)
-            
             var flags = Object.entries(CPU.FLAG)
             for (let i = 0; i < flags.length; i++) {
                 ctx.fillStyle = (flags[i][1] & CPU.status) > 0 ? "green" : "red"
-                ctx.fillText(flags[i][0], (3 + i) * size_x + padding, size_y)
+                ctx.fillText(flags[i][0], (i) * size_x + padding, size_y)
             }
 
 
@@ -215,20 +259,17 @@
             updateCpu()
             updateRam("ram_1", 0x0000)
             updateRam("ram_2", 0x8000)
-            updateDisassemble(26)
+            updateDisassemble(22)
         }
 
-        function runAuto(){
-            btn = document.getElementById("btn-start-interval")
-
-            if (!auto_runner){
-                auto_runner = setInterval(runManual, 50)
-                btn.textContent  = "Parar"
-
-            } else {
-                btn.textContent  = "Rodar Automático"
-                clearInterval(auto_runner)
-                auto_runner = undefined
+        function runAuto(btn, is_call_back = false){
+            if (!is_call_back){
+                btn.textContent = (btn.textContent == "Run") ? "Stop" : "Run"
+            }
+            
+            if (btn.textContent == "Stop"){
+                runManual()
+                setTimeout(runAuto, document.getElementById("interval").value, btn, true)
             }
         }
 
@@ -240,6 +281,7 @@
         }
 
         init()
-</script>
+    </script>
 </body>
+
 </html>

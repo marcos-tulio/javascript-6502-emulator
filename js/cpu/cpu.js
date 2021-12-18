@@ -321,16 +321,6 @@ class Cpu{
         else this.status &= ~f
     }
 
-
-    getFunctionOnInstance(){
-        for (let o = this.address_type; o && o != Object.prototype; o = Object.getPrototypeOf(o)) {
-            for (let name of Object.getOwnPropertyNames(o)) {
-                if ( name == this.lookup[0].addr_mode.name )
-                    return o
-            }
-        }
-    }
-
     clock(){
 
         if (this.cycles == 0){

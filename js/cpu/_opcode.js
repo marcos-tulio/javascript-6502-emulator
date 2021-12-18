@@ -66,8 +66,26 @@ class OpCode{
         return 1
     }
 
+    // Instruction: Arithmetic Shift Left
+    // Function:    A = C <- (A << 1) <- 0
+    // Flags Out:   N, Z, C
     asl(){
         printLogInstruction("Opcode mode ASL executed!")
+
+        this.cpu.fetch()
+
+        let temp = forceUInt16( this.cpu.fetched << 1 )
+
+        this.cpu.setFlag(this.cpu.FLAG.C, (temp & 0xFF00) > 0)
+        this.cpu.setFlag(this.cpu.FLAG.Z, (temp & 0x00FF) == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, temp & 0x80)
+
+        if (this.cpu.lookup[this.cpu.opcode].addr_mode == this.cpu.address_type.imp)
+            this.cpu.acc = temp & 0x00FF;
+        else
+            this.cpu.write(this.cpu.addr_abs, temp & 0x00FF)
+
+        return 0
     }
 
     // Generic function to branch instructions
@@ -106,8 +124,20 @@ class OpCode{
         return this.branch( this.cpu.getFlag(this.cpu.FLAG.Z) == 1 )
     }
 
+    // Instruction:
+    // Function:
     bit(){
         printLogInstruction("Opcode mode BIT executed!")
+
+        this.cpu.fetch()
+
+        let temp = forceUInt16( this.cpu.acc & this.cpu.fetched )
+
+        this.cpu.setFlag(this.cpu.FLAG.Z, (temp & 0x00FF) == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, this.cpu.fetched & (1 << 7))
+        this.cpu.setFlag(this.cpu.FLAG.V, this.cpu.fetched & (1 << 6))
+
+        return 0
     }
 
     // Instruction: Branch if Negative
@@ -202,20 +232,73 @@ class OpCode{
         return 0
     }
 
+    // Instruction: Compare Accumulator
+    // Function:    C <- A >= M      Z <- (A - M) == 0
+    // Flags Out:   N, C, Z
     cmp(){
         printLogInstruction("Opcode mode CMP executed!")
+
+        this.cpu.fetch()
+
+        let temp = forceUInt16( this.cpu.acc - this.cpu.fetched )
+
+        this.cpu.setFlag(this.cpu.FLAG.Z, (temp & 0x00FF) == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, temp & 0x0080)
+        this.cpu.setFlag(this.cpu.FLAG.C, this.cpu.acc >= this.cpu.fetched)
+
+        return 1
     }
 
+    // Instruction: Compare X Register
+    // Function:    C <- X >= M      Z <- (X - M) == 0
+    // Flags Out:   N, C, Z
     cpx(){
         printLogInstruction("Opcode mode CPX executed!")
+
+        this.cpu.fetch()
+
+        let temp = forceUInt16( this.cpu.reg_x - this.cpu.fetched )
+
+        this.cpu.setFlag(this.cpu.FLAG.Z, (temp & 0x00FF) == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, temp & 0x0080)
+        this.cpu.setFlag(this.cpu.FLAG.C, this.cpu.reg_x >= this.cpu.fetched)
+
+        return 0
     }
 
+    // Instruction: Compare Y Register
+    // Function:    C <- Y >= M      Z <- (Y - M) == 0
+    // Flags Out:   N, C, Z
     cpy(){
         printLogInstruction("Opcode mode CPY executed!")
+
+        this.cpu.fetch()
+
+        let temp = forceUInt16( this.cpu.reg_y - this.cpu.fetched )
+
+        this.cpu.setFlag(this.cpu.FLAG.Z, (temp & 0x00FF) == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, temp & 0x0080)
+        this.cpu.setFlag(this.cpu.FLAG.C, this.cpu.reg_y >= this.cpu.fetched)
+
+        return 0
     }
 
+    // Instruction: Decrement Value at Memory Location
+    // Function:    M = M - 1
+    // Flags Out:   N, Z
     dec(){
         printLogInstruction("Opcode mode DEC executed!")
+
+        this.cpu.fetch()
+
+        let temp = forceUInt16( this.cpu.fetched - 1 )
+
+        this.cpu.write(this.cpu.addr_abs, temp & 0x00FF)
+
+        this.cpu.setFlag(this.cpu.FLAG.Z, (temp & 0x00FF) == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, temp & 0x0080)
+
+        return 0
     }
 
     // Instruction: Decrement X Register
@@ -246,28 +329,94 @@ class OpCode{
         return 0
     }
 
+    // Instruction: Bitwise Logic XOR
+    // Function:    A = A xor M
+    // Flags Out:   N, Z
     eor(){
         printLogInstruction("Opcode mode EOR executed!")
+
+        this.cpu.fetch()
+
+        this.cpu.acc = forceUInt8( this.cpu.acc ^ this.cpu.fetched )
+
+        this.cpu.setFlag(this.cpu.FLAG.Z, this.cpu.acc == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, this.cpu.acc & 0x80)
+
+        return 1
     }
 
+    // Instruction: Increment Value at Memory Location
+    // Function:    M = M + 1
+    // Flags Out:   N, Z
     inc(){
         printLogInstruction("Opcode mode INC executed!")
+
+        this.cpu.fetch()
+
+        let temp = forceUInt16( this.cpu.fetched + 1 )
+
+        this.cpu.write(this.cpu.addr_abs, temp & 0x00FF)
+
+        this.cpu.setFlag(this.cpu.FLAG.Z, (temp & 0x00FF) == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, temp & 0x0080)
+
+        return 0
     }
 
+    // Instruction: Increment X Register
+    // Function:    X = X + 1
+    // Flags Out:   N, Z
     inx(){
         printLogInstruction("Opcode mode INX executed!")
+
+        this.cpu.reg_x = forceUInt8( this.cpu.reg_x + 1 )
+        
+        this.cpu.setFlag(this.cpu.FLAG.Z, this.cpu.reg_x == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, this.cpu.reg_x & 0x80)
+
+        return 0
     }
 
+    // Instruction: Increment Y Register
+    // Function:    Y = Y + 1
+    // Flags Out:   N, Z
     iny(){
         printLogInstruction("Opcode mode INY executed!")
+
+        this.cpu.reg_y = forceUInt8( this.cpu.reg_y + 1 )
+        
+        this.cpu.setFlag(this.cpu.FLAG.Z, this.cpu.reg_y == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, this.cpu.reg_y & 0x80)
+
+        return 0
     }
 
+    // Instruction: Jump To Location
+    // Function:    pc = address
     jmp(){
         printLogInstruction("Opcode mode JMP executed!")
+
+        this.cpu.pcount = forceUInt16( this.cpu.addr_abs )
+
+        return 0
     }
 
+    // Instruction: Jump To Sub-Routine
+    // Function:    Push current pc to stack, pc = address
     jsr(){
         printLogInstruction("Opcode mode JSR executed!")
+
+        this.cpu.pcount = forceUInt16( this.cpu.pcount - 1 )
+
+        this.cpu.write(0x0100 + this.cpu.stack, (this.cpu.pcount >> 8) & 0x00FF)
+        this.cpu.stack = forceUInt8( this.cpu.stack - 1 )
+
+        this.cpu.write(0x0100 + this.cpu.stack, this.cpu.pcount & 0x00FF)
+        this.cpu.stack = forceUInt8( this.cpu.stack - 1 )
+    
+        this.cpu.pcount = forceUInt16( this.cpu.addr_abs )
+
+        return 0
     }
 
     // Instruction: Load The Accumulator
@@ -318,12 +467,44 @@ class OpCode{
         return 1
     }
 
+    // Instruction:
+    // Function:
     lsr(){
         printLogInstruction("Opcode mode LSR executed!")
+
+        this.cpu.fetch()
+
+        this.cpu.setFlag(this.cpu.FLAG.C, this.cpu.fetched & 0x0001)
+
+        let temp = forceUInt16( this.cpu.fetched >> 1 )
+
+        this.cpu.setFlag(this.cpu.FLAG.Z, (temp & 0x00FF) == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, temp & 0x80)
+
+        if (this.cpu.lookup[this.cpu.opcode].addr_mode == this.cpu.address_type.imp)
+            this.cpu.acc = temp & 0x00FF;
+        else
+            this.cpu.write(this.cpu.addr_abs, temp & 0x00FF)
+
+        return 0
     }
 
+    // Instruction:
+    // Function:
     nop(){
         printLogInstruction("Opcode mode NOP executed!")
+
+        switch (this.cpu.opcode) {
+            case 0x1C:
+            case 0x3C:
+            case 0x5C:
+            case 0x7C:
+            case 0xDC:
+            case 0xFC:
+                return 1
+        }
+
+        return 0
     }
 
     // Instruction: Bitwise Logic OR
@@ -353,8 +534,20 @@ class OpCode{
         return 0
     }
 
+    // Instruction: Push Status Register to Stack
+    // Function:    status -> stack
+    // Note:        Break flag is set to 1 before push
     php(){
         printLogInstruction("Opcode mode PHP executed!")
+
+        this.cpu.write(0x0100 + this.cpu.stack, this.cpu.status | this.cpu.FLAG.B | this.cpu.FLAG.U)
+
+        this.cpu.setFlag(this.cpu.FLAG.B, false)
+        this.cpu.setFlag(this.cpu.FLAG.U, false)
+
+        this.cpu.stack = forceUInt8(this.cpu.stack - 1)
+
+        return 0
     }
 
     // Instruction: Pop Accumulator off Stack
@@ -372,19 +565,63 @@ class OpCode{
         return 0
     }
 
+    // Instruction: Pop Status Register off Stack
+    // Function:    Status <- stack
     plp(){
         printLogInstruction("Opcode mode PLP executed!")
+
+        this.cpu.stack = forceUInt8(this.cpu.stack + 1)
+        this.cpu.status = this.cpu.read(0x0100 + this.cpu.stack)
+
+        this.cpu.setFlag(this.cpu.FLAG.U, true)
+
+        return 0
     }
 
+    // Instruction:
+    // Function:
     rol(){
         printLogInstruction("Opcode mode ROL executed!")
+
+        this.cpu.fetch()
+
+        let temp = forceUInt16( this.cpu.fetched << 1 ) | this.cpu.getFlag(this.cpu.FLAG.C)
+
+        this.cpu.setFlag(this.cpu.FLAG.C, temp & 0xFF00)
+        this.cpu.setFlag(this.cpu.FLAG.Z, (temp & 0x00FF) == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, temp & 0x80)
+
+        if (this.cpu.lookup[this.cpu.opcode].addr_mode == this.cpu.address_type.imp)
+            this.cpu.acc = temp & 0x00FF
+        else
+            this.cpu.write(this.cpu.addr_abs, temp & 0x00FF)
+
+        return 0
     }
 
+    // Instruction:
+    // Function:
     ror(){
         printLogInstruction("Opcode mode ROR executed!")
+
+        this.cpu.fetch()
+
+        let temp = forceUInt16( this.cpu.getFlag(this.cpu.FLAG.C) << 7 ) | (this.cpu.fetched >> 1)
+
+        this.cpu.setFlag(this.cpu.FLAG.C, this.cpu.fetched & 0x01)
+        this.cpu.setFlag(this.cpu.FLAG.Z, (temp & 0x00FF) == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, temp & 0x80)
+
+        if (this.cpu.lookup[this.cpu.opcode].addr_mode == this.cpu.address_type.imp)
+            this.cpu.acc = temp & 0x00FF
+        else
+            this.cpu.write(this.cpu.addr_abs, temp & 0x00FF)
+
+        return 0
     }
 
-    //
+    // Instruction:
+    // Function:
     rti(){
         printLogInstruction("Opcode mode RTI executed!")
 
@@ -402,8 +639,20 @@ class OpCode{
         return 0
     }
 
+    // Instruction:
+    // Function:
     rts(){
         printLogInstruction("Opcode mode RTS executed!")
+
+        this.cpu.stack = forceUInt8(this.cpu.stack + 1)
+        this.cpu.pcount = forceUInt16( this.cpu.read(0x0100 + this.cpu.stack) )
+
+        this.cpu.stack = forceUInt8(this.cpu.stack + 1)
+        this.cpu.pcount |= forceUInt16( this.cpu.read(0x0100 + this.cpu.stack) << 8 )
+
+        this.cpu.pcount = forceUInt16( this.cpu.pcount + 1)
+
+        return 0
     }
 
     // Instruction: Subtraction with Borrow In
@@ -432,16 +681,34 @@ class OpCode{
         return 1
     }
 
+    // Instruction: Set Carry Flag
+    // Function:    C = 1
     sec(){
         printLogInstruction("Opcode mode SEC executed!")
+
+        this.cpu.setFlag(this.cpu.FLAG.C, true)
+
+        return 0
     }
 
+    // Instruction: Set Decimal Flag
+    // Function:    D = 1
     sed(){
         printLogInstruction("Opcode mode SED executed!")
+
+        this.cpu.setFlag(this.cpu.FLAG.D, true)
+
+        return 0
     }
 
+    // Instruction: Set Interrupt Flag / Enable Interrupts
+    // Function:    I = 1
     sei(){
         printLogInstruction("Opcode mode SEI executed!")
+
+        this.cpu.setFlag(this.cpu.FLAG.I, true)
+
+        return 0
     }
 
     // Instruction: Store Accumulator at Address
@@ -474,30 +741,87 @@ class OpCode{
         return 0
     }
 
+    // Instruction: Transfer Accumulator to X Register
+    // Function:    X = A
+    // Flags Out:   N, Z
     tax(){
         printLogInstruction("Opcode mode TAX executed!")
+
+        this.cpu.reg_x = this.cpu.acc
+        
+        this.cpu.setFlag(this.cpu.FLAG.Z, this.cpu.reg_x == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, this.cpu.reg_x & 0x80)
+
+        return 0
     }
 
+    // Instruction: Transfer Accumulator to Y Register
+    // Function:    Y = A
+    // Flags Out:   N, Z
     tay(){
         printLogInstruction("Opcode mode TAY executed!")
+
+        this.cpu.reg_y = this.cpu.acc
+        
+        this.cpu.setFlag(this.cpu.FLAG.Z, this.cpu.reg_y == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, this.cpu.reg_y & 0x80)
+
+        return 0
     }
 
+    // Instruction: Transfer Stack Pointer to X Register
+    // Function:    X = stack pointer
+    // Flags Out:   N, Z
     tsx(){
         printLogInstruction("Opcode mode TSX executed!")
+
+        this.cpu.reg_x = this.cpu.stack
+        
+        this.cpu.setFlag(this.cpu.FLAG.Z, this.cpu.reg_x == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, this.cpu.reg_x & 0x80)
+
+        return 0
     }
 
+    // Instruction: Transfer X Register to Accumulator
+    // Function:    A = X
+    // Flags Out:   N, Z
     txa(){
         printLogInstruction("Opcode mode TXA executed!")
+
+        this.cpu.acc = this.cpu.reg_x
+        
+        this.cpu.setFlag(this.cpu.FLAG.Z, this.cpu.acc == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, this.cpu.acc & 0x80)
+
+        return 0
     }
 
+    // Instruction: Transfer X Register to Stack Pointer
+    // Function:    stack pointer = X
     txs(){
         printLogInstruction("Opcode mode TXS executed!")
+
+        this.cpu.stack = this.cpu.reg_x
+
+        return 0
     }
 
+    // Instruction: Transfer Y Register to Accumulator
+    // Function:    A = Y
+    // Flags Out:   N, Z
     tya(){
         printLogInstruction("Opcode mode TYA executed!")
+
+        this.cpu.acc = this.cpu.reg_y
+        
+        this.cpu.setFlag(this.cpu.FLAG.Z, this.cpu.reg_y == 0x00)
+        this.cpu.setFlag(this.cpu.FLAG.N, this.cpu.reg_y & 0x80)
+
+        return 0
     }
 
+    // This function captures illegal opcodes
     xxx(){
         printLogInstruction("Opcode mode XXX executed!")
     }
