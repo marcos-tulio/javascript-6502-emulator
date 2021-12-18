@@ -8,11 +8,11 @@
     <!-- <link rel='stylesheet' type='text/css' media='screen' href='main.css'> -->
 
     <!-- Scripts -->
-    <script src='js/_helper.js'></script>
+    <script src='js/helper.js'></script>
     
-    <script src='js/cpu/_address.js'></script>
-    <script src='js/cpu/_instruction.js'></script>
-    <script src='js/cpu/_opcode.js'></script>
+    <script src='js/cpu/address.js'></script>
+    <script src='js/cpu/instruction.js'></script>
+    <script src='js/cpu/opcode.js'></script>
     <script src='js/cpu/cpu.js'></script>
 
     <script src='js/bus.js'></script>
@@ -25,6 +25,7 @@
             padding: 0;
             display: flex;
             flex-direction: column;
+            font-family: monospace;
         }
 
         .header{
@@ -56,7 +57,7 @@
             display: flex;
             flex-direction: column;
             width: 205px; 
-            height: 70px;
+            height: 90px;
         }
 
         button, label{
@@ -69,7 +70,11 @@
             margin: auto;
         }
 
-        .form input{ width: 50px;}
+        .form input{ width: 100%;}
+
+        input#interval{ width: 50px;}
+
+        input#rom{ color: transparent;}
 
     </style>
 </head>
@@ -90,19 +95,24 @@
 
         <div class="col">
             <div><canvas id="cpu" width="205" height="135"></canvas></div>
-            <div><canvas id="debugger" width="205" height="450"></canvas></div>
+            <div><canvas id="debugger" width="205" height="430"></canvas></div>
             
             <div class="buttons">
                 <div class="form">
-                    <label for="interval">Interval (ms):</label>
+                    <label for="rom">ROM:</label>
+                    <input id="rom" type="file" onchange="loadRom(this.files[0])"/>
+                </div>
+
+                <div class="form">
+                    <label for="interval">Up.Time(ms):</label>
                     <input id="interval" type="number" value="100"/>
                     <button onclick="runAuto(this)">Run</button>
                 </div>
 
                 <div class="form">
                     <button onclick="runManual()">Manual Step</button>
-                    <button onclick="init()">Reset</button>
-                </div>
+                    <button onclick="reset()">Reset</button>
+                </div>                
             </div>
         </div>      
     </div>
@@ -110,8 +120,8 @@
 
     <script>
         // Source
-        const offset_source = 0x8000
-        const source = [
+        var source_offset = 0x8000
+        var source = [
             0xA2, 0x0A, 0x8E, 0x00, 0x00, 0xA2, 0x03, 0x8E, 0x01, 0x00, 
             0xAC, 0x00, 0x00, 0xA9, 0x00, 0x18, 0x6D, 0x01, 0x00, 0x88, 
             0xD0, 0xFA, 0x8D, 0x02, 0x00, 0xEA, 0xEA, 0xEA
@@ -125,7 +135,7 @@
         const rows = 16
         const padding = 10
 
-        function init(){
+        function reset(){
             //------------------
             //      NES
             //-----------------
@@ -134,7 +144,7 @@
                 BUS.ram[i] = 0x00
 
             // load code to ram            
-            offset = offset_source
+            offset = source_offset
             for (const b of source) 
                 BUS.ram[offset++] = b
 
@@ -259,7 +269,7 @@
             updateCpu()
             updateRam("ram_1", 0x0000)
             updateRam("ram_2", 0x8000)
-            updateDisassemble(22)
+            updateDisassemble(21)
         }
 
         function runAuto(btn, is_call_back = false){
@@ -280,7 +290,14 @@
             updateScreen()
         }
 
-        init()
+        async function loadRom(file){
+            const array_buffer = await (new Response(file)).arrayBuffer()
+            source = new Uint8Array(array_buffer)
+
+            reset()
+        }
+
+        reset()
     </script>
 </body>
 

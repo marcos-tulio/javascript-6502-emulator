@@ -133,7 +133,7 @@ class Address{
         let high = forceUInt16( this.cpu.read((t + 1) & 0x00FF) )
 
         this.cpu.addr_abs = (high << 8) | low
-        this.cpu.addr_abs += y
+        this.cpu.addr_abs += this.cpu.reg_y
 
         if ( (this.cpu.addr_abs & 0xFF00) != (high << 8) )
             return 1
