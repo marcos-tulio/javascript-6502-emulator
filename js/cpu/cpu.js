@@ -306,7 +306,7 @@ class Cpu{
 
     read(addr, isReadOnly = false){
         printLog("CPU call BUS read!")
-        return this.bus.read()
+        return this.bus.read(addr, isReadOnly)
     }
 
     getFlag(f){
@@ -321,23 +321,40 @@ class Cpu{
         else this.status &= ~f
     }
 
+
+    getFunctionOnInstance(){
+        for (let o = this.address_type; o && o != Object.prototype; o = Object.getPrototypeOf(o)) {
+            for (let name of Object.getOwnPropertyNames(o)) {
+                if ( name == this.lookup[0].addr_mode.name )
+                    return o
+            }
+        }
+    }
+
     clock(){
+
         if (this.cycles == 0){
             this.opcode = this.read(this.pcount)
+
+            this.setFlag(this.FLAG.U, true)
+
             this.pcount++
 
             // Pega o valor inicial de ciclos
             this.cycles = this.lookup[this.opcode].cycles
 
-            var additional_cycle_1 = forceUInt8( this.lookup[this.opcode].addr_mode() )
-            var additional_cycle_2 = forceUInt8( this.lookup[this.opcode].operate() )
+            // Chamar a função com a referencia desta classe
+            let additional_cycle_1 = forceUInt8( this.lookup[this.opcode].addr_mode.call(this.address_type) )
+            let additional_cycle_2 = forceUInt8( this.lookup[this.opcode].operate.call(this.opcode_type) )
 
             this.cycles += (additional_cycle_1 & additional_cycle_2)
+
+            this.setFlag(this.FLAG.U, true)
         }
 
         this.cycles--
 
-        printLog("CPU has clocked. Cycles: " + this.cycles)
+        //printLog("CPU has clocked. Cycles: " + this.cycles)
     }
 
     reset(){
@@ -351,8 +368,8 @@ class Cpu{
         this.status = 0x00 | this.FLAG.U
 
         this.addr_abs = 0xFFFC
-        var low  = forceUInt16( this.read(this.addr_abs + 0) )
-        var high = forceUInt16( this.read(this.addr_abs + 1) )
+        let low  = forceUInt16( this.read(this.addr_abs + 0) )
+        let high = forceUInt16( this.read(this.addr_abs + 1) )
 
         this.pcount = (high << 8) | low
 
@@ -383,8 +400,8 @@ class Cpu{
 
             // Read new program counter location from fixed address
             this.addr_abs = 0xFFFE
-            var low  = forceUInt16( this.read(this.addr_abs + 0) )
-            var high = forceUInt16( this.read(this.addr_abs + 1) )
+            let low  = forceUInt16( this.read(this.addr_abs + 0) )
+            let high = forceUInt16( this.read(this.addr_abs + 1) )
             this.pcount = (high << 8) | low
 
             // IRQs take time
@@ -408,8 +425,8 @@ class Cpu{
             this.stack--
 
             this.addr_abs = 0xFFFA
-            var low  = forceUInt16( this.read(this.addr_abs + 0) )
-            var high = forceUInt16( this.read(this.addr_abs + 1) )
+            let low  = forceUInt16( this.read(this.addr_abs + 0) )
+            let high = forceUInt16( this.read(this.addr_abs + 1) )
             this.pcount = (high << 8) | low
 
             this.cycles = 8
@@ -421,5 +438,106 @@ class Cpu{
             this.fetched = this.read(this.addr_abs)
 
         return this.fetched
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // HELPER FUNCTIONS
+
+    complete(){
+        return this.cycles == 0;
+    }
+
+    disassemble(n_start, n_stop){  
+        let is_log_enabled = show_log_all         
+        
+        show_log_all = false
+
+        const mapLines = {}
+        let addr = n_start
+        let value = 0x00, lo = 0x00, hi = 0x00
+        let line_addr = 0
+
+        while (addr <= n_stop){
+            line_addr = addr;
+
+            // Prefix line with instruction address
+            let sInst = "$" + toHex(addr, 4) + ": ";
+
+            // Read instruction, and get its readable name
+            let _opcode = this.bus.read(addr, true); addr++;
+            sInst += this.lookup[_opcode].name + " ";
+
+            if (this.lookup[_opcode].addr_mode == this.address_type.imp){
+                sInst += " {IMP}";
+
+            } else if (this.lookup[_opcode].addr_mode == this.address_type.imm){
+                value = this.bus.read(addr, true); addr++;
+                sInst += "#$" + toHex(value, 2) + " {IMM}";
+            
+            } else if (this.lookup[_opcode].addr_mode == this.opcode_type.zp0){
+                lo = this.bus.read(addr, true); addr++;
+                hi = 0x00;												
+                sInst += "$" + toHex(lo, 2) + " {ZP0}";
+            }
+
+            else if (this.lookup[_opcode].addr_mode == this.opcode_type.zpx){
+                lo = this.bus.read(addr, true); addr++;
+                hi = 0x00;														
+                sInst += "$" + toHex(lo, 2) + ", X {ZPX}";
+            }
+
+            else if (this.lookup[_opcode].addr_mode == this.opcode_type.zpy){
+                lo = this.bus.read(addr, true); addr++;
+                hi = 0x00;														
+                sInst += "$" + toHex(lo, 2) + ", Y {ZPY}";
+            }
+
+            else if (this.lookup[_opcode].addr_mode == this.opcode_type.izx){
+                lo = this.bus.read(addr, true); addr++;
+                hi = 0x00;								
+                sInst += "($" + toHex(lo, 2) + ", X) {IZX}";
+            }
+
+            else if (this.lookup[_opcode].addr_mode == this.opcode_type.izy){
+                lo = this.bus.read(addr, true); addr++;
+                hi = 0x00;								
+                sInst += "($" + toHex(lo, 2) + "), Y {IZY}";
+            }
+
+            else if (this.lookup[_opcode].addr_mode == this.opcode_type.abs){
+                lo = this.bus.read(addr, true); addr++;
+                hi = this.bus.read(addr, true); addr++;
+                sInst += "$" + toHex((uint16_t)(hi << 8) | lo, 4) + " {ABS}";
+            }
+
+            else if (this.lookup[_opcode].addr_mode == this.opcode_type.abx){
+                lo = this.bus.read(addr, true); addr++;
+                hi = this.bus.read(addr, true); addr++;
+                sInst += "$" + toHex((uint16_t)(hi << 8) | lo, 4) + ", X {ABX}";
+            }
+
+            else if (this.lookup[_opcode].addr_mode == this.opcode_type.aby){
+                lo = this.bus.read(addr, true); addr++;
+                hi = this.bus.read(addr, true); addr++;
+                sInst += "$" + toHex((uint16_t)(hi << 8) | lo, 4) + ", Y {ABY}";
+            }
+
+            else if (this.lookup[_opcode].addr_mode == this.opcode_type.ind){
+                lo = this.bus.read(addr, true); addr++;
+                hi = this.bus.read(addr, true); addr++;
+                sInst += "($" + toHex((uint16_t)(hi << 8) | lo, 4) + ") {IND}";
+            }
+
+            else if (this.lookup[_opcode].addr_mode == this.opcode_type.rel){
+                value = this.bus.read(addr, true); addr++;
+                sInst += "$" + toHex(value, 2) + " [$" + toHex(addr + value, 4) + "] {REL}";
+            }
+
+            mapLines[line_addr] = sInst;
+        }
+                   
+        show_log_all = is_log_enabled
+
+        return mapLines;
     }
 }

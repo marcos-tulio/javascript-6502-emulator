@@ -31,7 +31,7 @@ class Bus{
         addr = forceUInt16(addr)
 
         if (addr >= 0x0000 && addr <= 0xFFFF){
-            printLog("BUS read " + this.ram[addr] + " in ram address " + addr)            
+            printLog("BUS read 0x" + toHex(this.ram[addr], 2) + " in ram address 0x" + toHex(addr, 4))  
             return this.ram[addr]
         }
 

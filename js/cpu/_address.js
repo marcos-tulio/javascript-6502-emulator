@@ -12,13 +12,13 @@ class Address{
     }
 
     abs(){
-        printLog("Address mode ABS executed!")
+        printLogInstruction("Address mode ABS executed!")
 
-        var low = forceUInt16( this.cpu.read(this.cpu.pcount) )
-        this.cpu.pcount++
+        let low = forceUInt16( this.cpu.read(this.cpu.pcount) )
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1)
 
-        var high = forceUInt16( this.cpu.read(this.cpu.pcount) )
-        this.cpu.pcount++
+        let high = forceUInt16( this.cpu.read(this.cpu.pcount) )
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1)
 
         this.cpu.addr_abs = (high << 8) | low
 
@@ -26,13 +26,13 @@ class Address{
     }
 
     abx(){
-        printLog("Address mode ABX executed!")
+        printLogInstruction("Address mode ABX executed!")
 
-        var low = forceUInt16( this.cpu.read(this.cpu.pcount) )
-        this.cpu.pcount++
+        let low = forceUInt16( this.cpu.read(this.cpu.pcount) )
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1)
 
-        var high = forceUInt16( this.cpu.read(this.cpu.pcount) )
-        this.cpu.pcount++
+        let high = forceUInt16( this.cpu.read(this.cpu.pcount) )
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1)
 
         this.cpu.addr_abs = (high << 8) | low
         this.cpu.addr_abs += this.cpu.reg_x
@@ -44,13 +44,13 @@ class Address{
     }
 
     aby(){
-        printLog("Address mode ABY executed!")
+        printLogInstruction("Address mode ABY executed!")
 
-        var low = forceUInt16( this.cpu.read(this.cpu.pcount) )
-        this.cpu.pcount++
+        let low = forceUInt16( this.cpu.read(this.cpu.pcount) )
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1)
 
-        var high = forceUInt16( this.cpu.read(this.cpu.pcount) )
-        this.cpu.pcount++
+        let high = forceUInt16( this.cpu.read(this.cpu.pcount) )
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1)
 
         this.cpu.addr_abs = (high << 8) | low
         this.cpu.addr_abs += this.cpu.reg_y
@@ -62,15 +62,15 @@ class Address{
     }
 
     ind(){
-        printLog("Address mode IND executed!")
+        printLogInstruction("Address mode IND executed!")
 
-        var ptr_low = forceUInt16( this.cpu.read(this.cpu.pcount) )
-        this.cpu.pcount++
+        let ptr_low = forceUInt16( this.cpu.read(this.cpu.pcount) )
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1) 
 
-        var ptr_high = forceUInt16( this.cpu.read(this.cpu.pcount) )
-        this.cpu.pcount++
+        let ptr_high = forceUInt16( this.cpu.read(this.cpu.pcount) )
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1)
 
-        var ptr = (ptr_high << 8) | ptr_low
+        let ptr = (ptr_high << 8) | ptr_low
 
         // Corrige um bug de hardware 
         if (ptr_low == 0x00FF)
@@ -84,29 +84,31 @@ class Address{
     }
 
     imm(){
-        printLog("Address mode IMM executed!")
+        printLogInstruction("Address mode IMM executed!")
 
-        this.cpu.addr_abs = this.cpu.pcount++
+        this.cpu.addr_abs = this.cpu.pcount
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1) 
 
         return 0
     }
 
     imp(){
-        printLog("Address mode IMP executed!")
+        printLogInstruction("Address mode IMP executed!")
 
+        
         this.cpu.fetched = this.cpu.acc
 
         return 0
     }
 
     izx(){
-        printLog("Address mode IZX executed!")
+        printLogInstruction("Address mode IZX executed!")
  
-        var t = forceUInt16( this.cpu.read(this.cpu.pcount) )
-        this.cpu.pcount++
+        let t = forceUInt16( this.cpu.read(this.cpu.pcount) )
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1)
 
-        var low  = forceUInt16( this.cpu.read( forceUInt16( t + forceUInt16(this.cpu.reg_x) ) & 0x00FF)     )
-        var high = forceUInt16( this.cpu.read( forceUInt16( t + forceUInt16(this.cpu.reg_x) + 1 ) & 0x00FF) )
+        let low  = forceUInt16( this.cpu.read( forceUInt16( t + forceUInt16(this.cpu.reg_x) ) & 0x00FF)     )
+        let high = forceUInt16( this.cpu.read( forceUInt16( t + forceUInt16(this.cpu.reg_x) + 1 ) & 0x00FF) )
 
         this.cpu.addr_abs = (high << 8) | low
 
@@ -114,13 +116,13 @@ class Address{
     }
 
     izy(){
-        printLog("Address mode IZY executed!")
+        printLogInstruction("Address mode IZY executed!")
 
-        var t = forceUInt16( this.cpu.read(this.cpu.pcount) )
-        this.cpu.pcount++
+        let t = forceUInt16( this.cpu.read(this.cpu.pcount) )
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1)
 
-        var low  = forceUInt16( this.cpu.read(t & 0x00FF) )
-        var high = forceUInt16( this.cpu.read((t + 1) & 0x00FF) )
+        let low  = forceUInt16( this.cpu.read(t & 0x00FF) )
+        let high = forceUInt16( this.cpu.read((t + 1) & 0x00FF) )
 
         this.cpu.addr_abs = (high << 8) | low
         this.cpu.addr_abs += y
@@ -132,10 +134,10 @@ class Address{
     }
 
     rel(){
-        printLog("Address mode REL executed!")
+        printLogInstruction("Address mode REL executed!")
 
         this.cpu.addr_rel = this.cpu.read(this.cpu.pcount)
-        this.cpu.pcount++
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1)
 
         if (this.cpu.addr_rel & 0x80)
             this.cpu.addr_rel |= 0xFF00
@@ -144,11 +146,11 @@ class Address{
     }
 
     zp0(){
-        printLog("Address mode ZP0 executed!")
+        printLogInstruction("Address mode ZP0 executed!")
 
         this.cpu.addr_abs = this.cpu.read(cpu.pcount)
         
-        this.cpu.pcount++
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1)
 
         this.cpu.addr_abs &= 0x00FF
 
@@ -156,11 +158,11 @@ class Address{
     }
 
     zpx(){
-        printLog("Address mode ZPX executed!")
+        printLogInstruction("Address mode ZPX executed!")
 
         this.cpu.addr_abs = this.cpu.read(cpu.pcount) + this.cpu.reg_x
         
-        this.cpu.pcount++
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1)
 
         this.cpu.addr_abs &= 0x00FF
 
@@ -168,11 +170,11 @@ class Address{
     }
 
     zpy(){
-        printLog("Address mode ZPY executed!")
+        printLogInstruction("Address mode ZPY executed!")
 
         this.cpu.addr_abs = this.cpu.read(cpu.pcount) + this.cpu.reg_y
         
-        this.cpu.pcount++
+        this.cpu.pcount = forceUInt16(this.cpu.pcount + 1)
 
         this.cpu.addr_abs &= 0x00FF
 
