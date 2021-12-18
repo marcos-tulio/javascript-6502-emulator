@@ -1,2 +1,5 @@
 # Javascript 6502 Emulator
-javascript-nes-emulator
+
+
+### Deploy
+https://marcos-tulio.github.io/javascript-6502-emulator/index.html
