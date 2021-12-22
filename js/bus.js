@@ -2,13 +2,11 @@
 //                            BUS
 //-------------------------------------------------------------
 class Bus{
-    cpu = undefined
-    ram = new Uint8Array(1024 * 64)
-
-    constructor(cpu){
+    constructor(cpu, ram_size = (1024 * 64)){
         printLog("BUS as created!")
 
         // Init ram
+        this.ram = new Uint8Array(ram_size)
         this.ram.map((_byte) => { _byte = 0x00 })
         printLog("BUS.ram initialized!")
 
