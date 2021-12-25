@@ -8,15 +8,13 @@
     <!-- <link rel='stylesheet' type='text/css' media='screen' href='main.css'> -->
 
     <!-- Scripts -->
-    <script src='js/helper.js'></script>
-    
+    <script src='js/helper.js'></script>    
     <script src='js/cpu/address.js'></script>
     <script src='js/cpu/instruction.js'></script>
     <script src='js/cpu/opcode.js'></script>
     <script src='js/cpu/cpu.js'></script>
-
-    <script src='js/bus.js'></script>
-    
+    <script src='js/bus.js'></script>    
+    <script src='js/screen.js'></script>    
     <script src='js/emulator.js'></script>
 
     <style>
@@ -100,204 +98,37 @@
             <div class="buttons">
                 <div class="form">
                     <label for="rom">ROM:</label>
-                    <input id="rom" type="file" onchange="loadRom(this.files[0])"/>
+                    <input id="rom" type="file" onchange="emulator.loadRom(this.files[0])"/>
                 </div>
 
                 <div class="form">
                     <label for="interval">Up.Time(ms):</label>
                     <input id="interval" type="number" value="100"/>
-                    <button onclick="runAuto(this)">Run</button>
+                    <button onclick="emulator.runAuto(this)">Run</button>
                 </div>
 
                 <div class="form">
-                    <button onclick="runManual()">Manual Step</button>
-                    <button onclick="reset()">Reset</button>
+                    <button onclick="emulator.runManual()">Manual Step</button>
+                    <button onclick="emulator.init()">Reset</button>
                 </div>                
             </div>
         </div>      
     </div>
 
-
     <script>
-        // Source
-        var source_offset = 0x8000
-        var source = [
-            0xA2, 0x0A, 0x8E, 0x00, 0x00, 0xA2, 0x03, 0x8E, 0x01, 0x00, 
-            0xAC, 0x00, 0x00, 0xA9, 0x00, 0x18, 0x6D, 0x01, 0x00, 0x88, 
-            0xD0, 0xFA, 0x8D, 0x02, 0x00, 0xEA, 0xEA, 0xEA
-        ]
+        // Create a Emulator instance
+        const emulator = new Emulator();
 
-        // Table config.
-        const size_x = 25
-        const size_y = 20
-        const title_size = 40
-        const cols = 16
-        const rows = 16
-        const padding = 10
-
-        function reset(){
-            //------------------
-            //      NES
-            //-----------------
-            // clear ram
-            for (const i in BUS.ram)
-                BUS.ram[i] = 0x00
-
-            // load code to ram            
-            offset = source_offset
-            for (const b of source) 
-                BUS.ram[offset++] = b
-
-
-            // reset vectors
-            BUS.ram[0xFFFC] = 0x00;
-		    BUS.ram[0xFFFD] = 0x80;
-
-            // reset
-            CPU.reset()
-
-
-            //------------------
-            //      Debugger
-            //-----------------
-            // init asm mapper 
-            map_asm = CPU.disassemble(0x0000, 0xFFFF)            
-
-
-            //------------------
-            //      View
-            //-----------------
-            // Canvas config.
-            const lstCanvas = document.getElementsByTagName("canvas");
-            for (i = 0; i < lstCanvas.length; i++)
-                lstCanvas[i].getContext("2d").font = "12px monospace"
-
-            auto_runner = undefined
-
-
-            updateScreen()
-
-            // Set refresh timer
-            /*setInterval(function(){
-                updateCpu()
-                updateRam("ram_1", 0x0000)
-                updateRam("ram_2", 0x8000)
-                updateDisassemble(26)
-            }, 500);*/
+        // Override refresh handle
+        emulator.screen.refresh = function(){
+            this.updateCpu()
+            this.updateRam("ram_1", 0x0000)
+            this.updateRam("ram_2", 0x8000)
+            this.updateDisassemble(21)
         }
 
-        function getCanvasClearned(id){
-            const canvas = document.getElementById(id)
-            const context = canvas.getContext("2d")
-
-            context.clearRect(0, 0, canvas.width, canvas.height);
-
-            return canvas
-        }
-
-        function updateRam(id, address){
-            const ctx = getCanvasClearned(id).getContext("2d")
-
-            var row = col = 0            
-            for (var i = address; i < BUS.ram.length; i++){
-                if (i % cols == 0){
-                    col = 0
-                    row++
-
-                    if (row > rows) break;
-                }
-
-                if (col == 0)
-                    ctx.fillText("$" + toHex(i, 4), col++ * size_x + padding, row * size_y)
-                
-                ctx.fillText(toHex(BUS.ram[i]), col++ * size_x + title_size, row * size_y)  
-            }  
-        }
-
-        function updateCpu(){
-            const ctx = getCanvasClearned("cpu").getContext("2d")
-            
-            var flags = Object.entries(CPU.FLAG)
-            for (let i = 0; i < flags.length; i++) {
-                ctx.fillStyle = (flags[i][1] & CPU.status) > 0 ? "green" : "red"
-                ctx.fillText(flags[i][0], (i) * size_x + padding, size_y)
-            }
-
-
-            // Registers
-            ctx.fillStyle = "black"
-            ctx.fillText("PC: $" + toHex(CPU.pcount, 4), padding, size_y * 2)
-            ctx.fillText("SP: $" + toHex(CPU.stack, 2), padding, size_y * 3)
-            ctx.fillText(" A: $" + toHex(CPU.acc, 2)   + " ("+ CPU.acc   + ")", padding, size_y * 4)
-            ctx.fillText(" X: $" + toHex(CPU.reg_x, 2) + " ("+ CPU.reg_x + ")", padding, size_y * 5)
-            ctx.fillText(" Y: $" + toHex(CPU.reg_y, 2) + " ("+ CPU.reg_y + ")", padding, size_y * 6)
-        }
-
-        function updateDisassemble(lines = 10){
-            const ctx = getCanvasClearned("debugger").getContext("2d")
-
-            const offsets = []
-            let offset_selected = undefined
-            let down_lines = parseInt(lines / 2);
-
-            // down check
-            for (let i = CPU.pcount; i >= 0; i--) {
-                if (map_asm[i]){
-                    offsets.push(i)
-                    if (!offset_selected) offset_selected = i
-                    if (!down_lines--) break
-                }
-            }
-
-            // up check
-            for (let i = CPU.pcount + 1; i < BUS.ram.length; i++) {
-                if (map_asm[i]){
-                    offsets.push(i)
-                    if (offsets.length == lines) break
-                }
-            }
-
-            // draw codes
-            let line = 1
-            for (const _offset of offsets.sort( function(a,b) { return a - b; } )) {
-                ctx.fillStyle = (_offset == offset_selected) ? "green" : "black"
-                ctx.fillText(map_asm[_offset], padding, line++ * size_y)
-            }
-        }
-
-        function updateScreen(){
-            updateCpu()
-            updateRam("ram_1", 0x0000)
-            updateRam("ram_2", 0x8000)
-            updateDisassemble(21)
-        }
-
-        function runAuto(btn, is_call_back = false){
-            if (!is_call_back){
-                btn.textContent = (btn.textContent == "Run") ? "Stop" : "Run"
-            }
-            
-            if (btn.textContent == "Stop"){
-                runManual()
-                setTimeout(runAuto, document.getElementById("interval").value, btn, true)
-            }
-        }
-
-        function runManual(){
-            do CPU.clock()
-            while (!CPU.complete())
-
-            updateScreen()
-        }
-
-        async function loadRom(file){
-            const array_buffer = await (new Response(file)).arrayBuffer()
-            source = new Uint8Array(array_buffer)
-
-            reset()
-        }
-
-        reset()
+        // Init Emulator
+        emulator.init()
     </script>
 </body>
 
