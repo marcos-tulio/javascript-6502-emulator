@@ -3,7 +3,14 @@
 //-------------------------------------------------------------
 class Emulator{
 
+    source = []
+    source_offset = 0x0000
+
     constructor(){
+        this.onCreate()
+    }
+
+    onCreate(){
         this.cpu = new Cpu()
         this.bus = new Bus(this.cpu)
         this.screen = new Screen(this.cpu)   
@@ -58,7 +65,7 @@ class Emulator{
         const array_buffer = await (new Response(file)).arrayBuffer()
         this.source = new Uint8Array(array_buffer)
 
-        this.screen.init()
+        this.init()
     }
 }
 

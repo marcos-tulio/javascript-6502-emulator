@@ -57,8 +57,8 @@ class Screen{
         }  
     }
 
-    updateCpu(){
-        const ctx = this.getCanvasClearned("cpu").getContext("2d")
+    updateCpu(id = "cpu"){
+        const ctx = this.getCanvasClearned(id).getContext("2d")
         
         let flags = Object.entries(this.cpu.FLAG)
         for (let i = 0; i < flags.length; i++) {
@@ -76,8 +76,8 @@ class Screen{
         ctx.fillText(" Y: $" + toHex(this.cpu.reg_y, 2) + " ("+ this.cpu.reg_y + ")", this.padding, this.size_y * 6)
     }
 
-    updateDisassemble(lines = 10){
-        const ctx = this.getCanvasClearned("debugger").getContext("2d")
+    updateDisassemble(lines = 10, id = "debugger"){
+        const ctx = this.getCanvasClearned(id).getContext("2d")
 
         const offsets = []
         let offset_selected = undefined
@@ -93,7 +93,7 @@ class Screen{
         }
 
         // up check
-        for (let i = this.cpu.pcount + 1; i < this.cpu.bus.ram.length; i++) {
+        for (let i = this.cpu.pcount + 1; i < 0xFFFF; i++) {
             if (this.map_asm[i]){
                 offsets.push(i)
                 if (offsets.length == lines) break
